@@ -17,7 +17,8 @@ namespace IAHO
         constexpr uint8_t EssentialInventoryType = 2;
         constexpr auto RefreshWindow = std::chrono::milliseconds{250};
 
-        auto ReadNameProperty(UObject* Object, const CharType* PropertyName, FName& OutValue) -> bool
+        template <typename ValueType>
+        auto ReadProperty(UObject* Object, const CharType* PropertyName, ValueType& OutValue) -> bool
         {
             if (!Object)
             {
@@ -28,7 +29,7 @@ namespace IAHO
             {
                 return false;
             }
-            OutValue = *Property->ContainerPtrToValuePtr<FName>(Object);
+            OutValue = *Property->ContainerPtrToValuePtr<ValueType>(Object);
             return true;
         }
     } // namespace
@@ -130,10 +131,24 @@ namespace IAHO
             }
 
             FName ItemId{};
-            if (!ReadNameProperty(StaticItemData, STR("ID"), ItemId))
+            if (!ReadProperty(StaticItemData, STR("ID"), ItemId))
             {
                 continue;
             }
+
+            // The Essential container also holds consumables - raid summons, dungeon keys - which are
+            // used up and worth crafting again. Only a non-stacking item is a true craft-once key item.
+            int32 MaxStackCount{1};
+            if (!ReadProperty(StaticItemData, STR("MaxStackCount"), MaxStackCount))
+            {
+                MaxStackCount = 1;
+            }
+            if (MaxStackCount != 1)
+            {
+                LogDiscovery(STR("Essential slot {} holds '{}' (stacks to {}, stays craftable)\n"), Index, ItemId.ToString(), MaxStackCount);
+                continue;
+            }
+
             Owned.insert(ItemId.ToUnstableInt());
             LogDiscovery(STR("Essential slot {} holds '{}'\n"), Index, ItemId.ToString());
         }

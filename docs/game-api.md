@@ -17,11 +17,28 @@ by name at runtime.
 | Slot occupancy | `UPalItemSlot::IsEmpty()` | 25584 |
 | Slot item data | `UPalItemSlot::TryGetStaticItemData(OutStaticItemData)` | 25573 |
 | Item id | `UPalStaticItemDataBase::ID` | 34854 |
+| Craft-once test | `UPalStaticItemDataBase::MaxStackCount` | 34862 |
 
 `EPalPlayerInventoryType::Essential == 2` (`Pal_enums.hpp:4441`).
 
 `UPalItemContainer::GetItemStackCount(StaticItemId)` (line 25437) is a cheaper
 single-item alternative when a full snapshot is not needed.
+
+Container membership alone is not enough: consumables such as `KeySphere_*`,
+`PalSummon_*` and `Salvage_TreasureBoxKey*` live in the Essential container too.
+`MaxStackCount == 1` separates the craft-once unlocks from them.
+
+## The crafting menu list
+
+`UPalMapObjectConvertItemModel::GetRecipes()` (line 26888) returns the recipe id
+list every crafting surface displays; its backing field is `RecipeIds` at
+`+0x2A8`. Measured in game: 124 entries at the Pal gear bench, 545 at the
+workbench.
+
+Two other candidates were hooked during bring-up and removed.
+`UPalUIUtility::FilteringWorkSpaceRecipe` (line 37465) fired eight times and
+returned an empty array every time; `UPalTechnologyData::FilteringUnlockedRecipe`
+(line 35463) never fired.
 
 ## Recipes
 

@@ -32,11 +32,10 @@ namespace IAHO
             const CharType* WorldContextParam;
         };
 
-        // Every list-producing entry point a crafting surface might use. Which one actually feeds which
-        // menu is resolved at runtime; hooking all of them costs nothing when a menu never calls them.
+        // This is the list every crafting surface actually reads. UPalUIUtility::FilteringWorkSpaceRecipe
+        // and UPalTechnologyData::FilteringUnlockedRecipe were also hooked during bring-up: the former
+        // returned an empty array on all eight calls, the latter never fired at all.
         constexpr std::array Targets{
-            HookTarget{STR("/Script/Pal.PalUIUtility:FilteringWorkSpaceRecipe"), STR("OutFilteredArray"), STR("WorldContextObject")},
-            HookTarget{STR("/Script/Pal.PalTechnologyData:FilteringUnlockedRecipe"), STR("OutRecipeIdArray"), nullptr},
             HookTarget{STR("/Script/Pal.PalMapObjectConvertItemModel:GetRecipes"), STR("ReturnValue"), nullptr},
         };
 

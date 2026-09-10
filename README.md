@@ -15,16 +15,17 @@ offsets — so a game patch that moves fields around does not silently corrupt
 anything. The relevant game symbols are documented in
 [`docs/game-api.md`](docs/game-api.md).
 
-Three recipe-list functions are post-hooked, since which one feeds which
-crafting surface is a runtime question:
+One function is post-hooked: `UPalMapObjectConvertItemModel::GetRecipes`, whose
+return value is the list every crafting surface reads. Two other candidates were
+hooked during bring-up and dropped — `UPalUIUtility::FilteringWorkSpaceRecipe`
+returned an empty array on all eight calls, and
+`UPalTechnologyData::FilteringUnlockedRecipe` never fired.
 
-| Function | Parameter filtered |
-| --- | --- |
-| `UPalUIUtility::FilteringWorkSpaceRecipe` | `OutFilteredArray` |
-| `UPalTechnologyData::FilteringUnlockedRecipe` | `OutRecipeIdArray` |
-| `UPalMapObjectConvertItemModel::GetRecipes` | `ReturnValue` |
+The Essential container also holds consumables — raid summons, dungeon keys —
+which are used up and worth crafting again, so only items with
+`MaxStackCount == 1` count as craft-once.
 
-Set `LogLevel = discovery` in `config.ini` to see which one fires for each menu.
+Set `LogLevel = discovery` in `config.ini` to trace every call and decision.
 
 The mod is client-side. On a dedicated server there is no local player state, so
 it does nothing. Every failure path leaves the vanilla list untouched.
