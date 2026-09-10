@@ -1,0 +1,3 @@
+[submodule "deps/ue4ss"]
+	path = deps/ue4ss
+	url = https://github.com/UE4SS-RE/RE-UE4SS.git
