@@ -53,6 +53,15 @@ namespace IAHO
             {
                 return nullptr;
             }
+
+            // A return value lives in the caller's storage, which RESULT_DECL points at. For a function
+            // with no arguments the local frame is not a parameter block at all, so reading a return
+            // value off Locals() yields garbage.
+            if (Property->HasAllPropertyFlags(CPF_ReturnParm))
+            {
+                return Context.RESULT_DECL;
+            }
+
             auto* Locals = Context.TheStack.Locals();
             if (!Locals)
             {
@@ -96,6 +105,17 @@ namespace IAHO
                 return;
             }
             auto& RecipeList = *static_cast<TArray<FName>*>(ListAddress);
+
+            // A misread address shows up as a nonsense length. Refuse to touch the array rather than
+            // walk whatever it points at.
+            if (RecipeList.Num() < 0 || RecipeList.Num() > 4096)
+            {
+                Log<LogLevel::Error>(STR("'{}' parameter '{}' has implausible length {}, skipping\n"),
+                                     Target->FunctionPath,
+                                     Target->RecipeListParam,
+                                     RecipeList.Num());
+                return;
+            }
 
             UObject* WorldContext = Context.Context;
             if (Target->WorldContextParam)
