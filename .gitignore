@@ -1,3 +1,15 @@
 build/
+build_xwin/
+dlls/
 out/
+.vs/
+.xwin-cache
+CMakeCache.txt
+CMakeFiles/
+compile_commands.json
+*.pdb
+*.ilk
+*.exp
+*.obj
+*.lib
 *.user
