@@ -17,16 +17,22 @@ by name at runtime.
 | Slot occupancy | `UPalItemSlot::IsEmpty()` | 25584 |
 | Slot item data | `UPalItemSlot::TryGetStaticItemData(OutStaticItemData)` | 25573 |
 | Item id | `UPalStaticItemDataBase::ID` | 34854 |
-| Craft-once test | `UPalStaticItemDataBase::MaxStackCount` | 34862 |
+
 
 `EPalPlayerInventoryType::Essential == 2` (`Pal_enums.hpp:4441`).
 
 `UPalItemContainer::GetItemStackCount(StaticItemId)` (line 25437) is a cheaper
 single-item alternative when a full snapshot is not needed.
 
-Container membership alone is not enough: consumables such as `KeySphere_*`,
-`PalSummon_*` and `Salvage_TreasureBoxKey*` live in the Essential container too.
-`MaxStackCount == 1` separates the craft-once unlocks from them.
+Consumables such as `KeySphere_*`, `PalSummon_*` and `Salvage_TreasureBoxKey*`
+live in the Essential container too, and ideally would stay craftable.
+`MaxStackCount` does not separate them — measured in game, Essential items carry
+caps of 9999 (`Lantern`, `AutoMealPouch_*`, `AdditionalInventory_*`), 999999
+(`SkillUnlock_*`), 99999999 (`KeySphere_*`) and 1
+(`UnlockEquipmentSlot_Accessory_*`), which does not track whether an item is
+used up. `TypeB` (line 2678 of `Pal_enums.hpp`, with its `Essential_*` variants)
+is the next candidate; discovery logging records it alongside `TypeA`,
+`MaxStackCount` and `bNotConsumed`.
 
 ## The crafting menu list
 

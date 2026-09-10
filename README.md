@@ -21,9 +21,12 @@ hooked during bring-up and dropped — `UPalUIUtility::FilteringWorkSpaceRecipe`
 returned an empty array on all eight calls, and
 `UPalTechnologyData::FilteringUnlockedRecipe` never fired.
 
-The Essential container also holds consumables — raid summons, dungeon keys —
-which are used up and worth crafting again, so only items with
-`MaxStackCount == 1` count as craft-once.
+Membership in the Essential container is the whole rule. Consumables kept there
+— `KeySphere_*`, `PalSummon_*` — would ideally stay craftable, but nothing on
+the item data separates them cleanly yet: the game gives Essential items stack
+caps of 9999, 999999 and 99999999 with no correspondence to whether an item is
+used up. Discovery logging records `TypeA`, `TypeB`, `MaxStackCount` and
+`bNotConsumed` per slot so the question can be settled with data.
 
 Set `LogLevel = discovery` in `config.ini` to trace every call and decision.
 

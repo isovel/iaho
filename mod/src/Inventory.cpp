@@ -136,21 +136,30 @@ namespace IAHO
                 continue;
             }
 
-            // The Essential container also holds consumables - raid summons, dungeon keys - which are
-            // used up and worth crafting again. Only a non-stacking item is a true craft-once key item.
-            int32 MaxStackCount{1};
-            if (!ReadProperty(StaticItemData, STR("MaxStackCount"), MaxStackCount))
-            {
-                MaxStackCount = 1;
-            }
-            if (MaxStackCount != 1)
-            {
-                LogDiscovery(STR("Essential slot {} holds '{}' (stacks to {}, stays craftable)\n"), Index, ItemId.ToString(), MaxStackCount);
-                continue;
-            }
-
             Owned.insert(ItemId.ToUnstableInt());
-            LogDiscovery(STR("Essential slot {} holds '{}'\n"), Index, ItemId.ToString());
+
+            // Membership in the Essential container is the whole rule. MaxStackCount looked like a way
+            // to separate craft-once unlocks from consumables kept here, but the game gives Essential
+            // items caps of 9999 to 99999999 with no clean split, so these fields are logged for a
+            // future decision rather than acted on.
+            if (GetConfig().Verbosity() >= LogVerbosity::Discovery)
+            {
+                int32 MaxStackCount{};
+                uint8_t TypeA{};
+                uint8_t TypeB{};
+                bool NotConsumed{};
+                ReadProperty(StaticItemData, STR("MaxStackCount"), MaxStackCount);
+                ReadProperty(StaticItemData, STR("TypeA"), TypeA);
+                ReadProperty(StaticItemData, STR("TypeB"), TypeB);
+                ReadProperty(StaticItemData, STR("bNotConsumed"), NotConsumed);
+                LogDiscovery(STR("Essential slot {} holds '{}' (TypeA={} TypeB={} MaxStack={} NotConsumed={})\n"),
+                             Index,
+                             ItemId.ToString(),
+                             TypeA,
+                             TypeB,
+                             MaxStackCount,
+                             NotConsumed);
+            }
         }
 
         const auto Changed = Owned != m_OwnedIds;
