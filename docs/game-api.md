@@ -24,15 +24,29 @@ by name at runtime.
 `UPalItemContainer::GetItemStackCount(StaticItemId)` (line 25437) is a cheaper
 single-item alternative when a full snapshot is not needed.
 
-Consumables such as `KeySphere_*`, `PalSummon_*` and `Salvage_TreasureBoxKey*`
-live in the Essential container too, and ideally would stay craftable.
-`MaxStackCount` does not separate them — measured in game, Essential items carry
-caps of 9999 (`Lantern`, `AutoMealPouch_*`, `AdditionalInventory_*`), 999999
-(`SkillUnlock_*`), 99999999 (`KeySphere_*`) and 1
-(`UnlockEquipmentSlot_Accessory_*`), which does not track whether an item is
-used up. `TypeB` (line 2678 of `Pal_enums.hpp`, with its `Essential_*` variants)
-is the next candidate; discovery logging records it alongside `TypeA`,
-`MaxStackCount` and `bNotConsumed`.
+Consumables such as `KeySphere_*` live in the Essential container too and should
+stay craftable. `UPalStaticItemDataBase::TypeB` (`EPalItemTypeB`,
+`Pal_enums.hpp:2678`) separates them. Measured across a 42-item Essential
+inventory:
+
+| `TypeB` | Name | Items | Craft-once |
+| --- | --- | --- | --- |
+| 54 | `Essential` | `KeySphere_01-06`, `WhaleWhistleFragment_04` | no |
+| 55 | `Essential_UnlockPlayerFuture` | `AutoMealPouch_*`, `Unlock_Picking_*`, `UnlockEquipmentSlot_*`, `WaterBuildKit`, `WhaleWhistle` | yes |
+| 63 | `Blueprint` | `Blueprint_WhaleWhistle` | yes |
+| 65 | `Essential_PalGear` | `SkillUnlock_*` | yes |
+| 66 | `Essential_AdditionalInventory` | `AdditionalInventory_001-003` | yes |
+| 69 | `Essential_Lamp` | `Lantern`, `Lantern_High` | yes |
+
+Every consumable sits in the generic bucket 54; every craft-once item has a
+dedicated one. An unrecognised item landing in 54 simply keeps its recipe, which
+is the harmless direction to be wrong in.
+
+`MaxStackCount` does not work for this. The same inventory carries caps of 9999
+(`Lantern`, `AutoMealPouch_*`), 999999 (`SkillUnlock_*`), 99999999
+(`KeySphere_*`) and 1 (`UnlockEquipmentSlot_Accessory_*`), with no
+correspondence to whether an item is used up. `bNotConsumed` is likewise no help:
+it is `true` only for `Lantern` and `Lantern_High`.
 
 ## The crafting menu list
 

@@ -15,6 +15,13 @@ namespace IAHO
     {
         // EPalPlayerInventoryType::Essential
         constexpr uint8_t EssentialInventoryType = 2;
+
+        // EPalItemTypeB::Essential - the generic key item bucket. Measured in game, this is where the
+        // consumables live (KeySphere_01-06, WhaleWhistleFragment_04) while every craft-once item has a
+        // dedicated bucket instead: Essential_UnlockPlayerFuture, Essential_PalGear,
+        // Essential_AdditionalInventory, Essential_Lamp, Blueprint. An unrecognised item landing here
+        // simply keeps its recipe, which is the harmless direction to be wrong in.
+        constexpr uint8_t ConsumableKeyItemTypeB = 54;
         constexpr auto RefreshWindow = std::chrono::milliseconds{250};
 
         template <typename ValueType>
@@ -136,29 +143,31 @@ namespace IAHO
                 continue;
             }
 
-            Owned.insert(ItemId.ToUnstableInt());
+            uint8_t TypeB{};
+            const auto HasTypeB = ReadProperty(StaticItemData, STR("TypeB"), TypeB);
+            const auto IsConsumable = HasTypeB && TypeB == ConsumableKeyItemTypeB;
 
-            // Membership in the Essential container is the whole rule. MaxStackCount looked like a way
-            // to separate craft-once unlocks from consumables kept here, but the game gives Essential
-            // items caps of 9999 to 99999999 with no clean split, so these fields are logged for a
-            // future decision rather than acted on.
+            if (!IsConsumable)
+            {
+                Owned.insert(ItemId.ToUnstableInt());
+            }
+
             if (GetConfig().Verbosity() >= LogVerbosity::Discovery)
             {
                 int32 MaxStackCount{};
                 uint8_t TypeA{};
-                uint8_t TypeB{};
                 bool NotConsumed{};
                 ReadProperty(StaticItemData, STR("MaxStackCount"), MaxStackCount);
                 ReadProperty(StaticItemData, STR("TypeA"), TypeA);
-                ReadProperty(StaticItemData, STR("TypeB"), TypeB);
                 ReadProperty(StaticItemData, STR("bNotConsumed"), NotConsumed);
-                LogDiscovery(STR("Essential slot {} holds '{}' (TypeA={} TypeB={} MaxStack={} NotConsumed={})\n"),
+                LogDiscovery(STR("Essential slot {} holds '{}' (TypeA={} TypeB={} MaxStack={} NotConsumed={}){}\n"),
                              Index,
                              ItemId.ToString(),
                              TypeA,
                              TypeB,
                              MaxStackCount,
-                             NotConsumed);
+                             NotConsumed,
+                             IsConsumable ? STR(" consumable, stays craftable") : STR(""));
             }
         }
 

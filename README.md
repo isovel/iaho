@@ -21,12 +21,12 @@ hooked during bring-up and dropped — `UPalUIUtility::FilteringWorkSpaceRecipe`
 returned an empty array on all eight calls, and
 `UPalTechnologyData::FilteringUnlockedRecipe` never fired.
 
-Membership in the Essential container is the whole rule. Consumables kept there
-— `KeySphere_*`, `PalSummon_*` — would ideally stay craftable, but nothing on
-the item data separates them cleanly yet: the game gives Essential items stack
-caps of 9999, 999999 and 99999999 with no correspondence to whether an item is
-used up. Discovery logging records `TypeA`, `TypeB`, `MaxStackCount` and
-`bNotConsumed` per slot so the question can be settled with data.
+The container also holds consumables, which are used up and worth crafting
+again, so those are skipped. `TypeB` makes the split: the consumables sit in the
+generic `Essential` bucket (54) while every craft-once item has a dedicated one —
+`Essential_UnlockPlayerFuture`, `Essential_PalGear`,
+`Essential_AdditionalInventory`, `Essential_Lamp`, `Blueprint`. See
+[`docs/game-api.md`](docs/game-api.md) for the measured values.
 
 Set `LogLevel = discovery` in `config.ini` to trace every call and decision.
 
