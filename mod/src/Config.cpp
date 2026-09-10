@@ -1,8 +1,8 @@
 #include "Config.hpp"
 
 #include <algorithm>
+#include <cwctype>
 #include <fstream>
-#include <sstream>
 
 #include "Log.hpp"
 
@@ -25,7 +25,7 @@ namespace IAHO
         auto ToLower(StringType Value) -> StringType
         {
             std::transform(Value.begin(), Value.end(), Value.begin(), [](RC::CharType C) {
-                return static_cast<RC::CharType>(std::towlower(C));
+                return static_cast<RC::CharType>(std::towlower(static_cast<std::wint_t>(C)));
             });
             return Value;
         }
@@ -64,7 +64,7 @@ namespace IAHO
     auto Config::Load(const std::filesystem::path& ModDirectory) -> void
     {
         const auto ConfigPath = ModDirectory / "config.ini";
-        std::wifstream Stream{ConfigPath};
+        RC::File::StreamIType Stream{ConfigPath};
         if (!Stream.is_open())
         {
             Log(STR("No config.ini at {}, using defaults\n"), ConfigPath.wstring());

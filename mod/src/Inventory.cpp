@@ -96,13 +96,18 @@ namespace IAHO
             return false;
         }
 
+        FuncCall GetSlot{};
+        if (!GetSlot.Bind(Container, STR("Get")))
+        {
+            Log<LogLevel::Error>(STR("Essential container has no reflected Get(Index)\n"));
+            return false;
+        }
+
         std::unordered_set<uint64_t> Owned{};
         for (int32 Index = 0; Index < SlotCount; ++Index)
         {
             UObject* Slot{};
-            FuncCall GetSlot{};
-            if (!GetSlot.Bind(Container, STR("Get")) || !GetSlot.Set(STR("Index"), Index) || !GetSlot.Call() ||
-                !GetSlot.Get(STR("ReturnValue"), Slot) || !Slot)
+            if (!GetSlot.Set(STR("Index"), Index) || !GetSlot.Call() || !GetSlot.Get(STR("ReturnValue"), Slot) || !Slot)
             {
                 continue;
             }

@@ -1,6 +1,7 @@
 #include "Hooks.hpp"
 
 #include <array>
+#include <unordered_map>
 
 #include <Unreal/Core/Containers/Array.hpp>
 #include <Unreal/CoreUObject/UObject/Class.hpp>
@@ -38,6 +39,12 @@ namespace IAHO
             HookTarget{STR("/Script/Pal.PalTechnologyData:FilteringUnlockedRecipe"), STR("OutRecipeIdArray"), nullptr},
             HookTarget{STR("/Script/Pal.PalMapObjectConvertItemModel:GetRecipes"), STR("ReturnValue"), nullptr},
         };
+
+        auto LastHiddenCount() -> std::unordered_map<const CharType*, int32>&
+        {
+            static std::unordered_map<const CharType*, int32> Counts{};
+            return Counts;
+        }
 
         auto ParamAddress(UnrealScriptFunctionCallableContext& Context, UFunction* Function, const CharType* ParamName) -> void*
         {
@@ -114,6 +121,7 @@ namespace IAHO
                 return;
             }
 
+            int32 Hidden = 0;
             for (int32 Index = RecipeList.Num() - 1; Index >= 0; --Index)
             {
                 const auto RecipeId = RecipeList[Index];
@@ -121,8 +129,20 @@ namespace IAHO
                 {
                     continue;
                 }
-                Log(STR("Hiding '{}' (already in key items)\n"), FName{RecipeId}.ToString());
+                LogDiscovery(STR("Hiding '{}' (already in key items)\n"), FName{RecipeId}.ToString());
                 RecipeList.RemoveAt(Index);
+                ++Hidden;
+            }
+
+            // A crafting menu can re-query its list every frame, so only report when the answer changes.
+            auto& LastHidden = LastHiddenCount()[Target->FunctionPath];
+            if (Hidden != LastHidden)
+            {
+                LastHidden = Hidden;
+                if (Hidden > 0)
+                {
+                    Log(STR("{}: hid {} already-owned key item recipe(s)\n"), Target->FunctionPath, Hidden);
+                }
             }
         }
     } // namespace
