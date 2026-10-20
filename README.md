@@ -122,7 +122,8 @@ An id list may also be one comma- or semicolon-separated string.
 
 Earlier versions read `config.ini`. When `config.json` does not exist yet, the
 mod carries `config.ini`'s settings into it once and then leaves `config.ini`
-alone; delete it whenever you like.
+alone; delete it whenever you like. While `config.ini` is still there, deleting
+`config.json` imports it again, so delete both to start from the defaults.
 
 ## Tests
 
