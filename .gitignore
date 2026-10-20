@@ -13,3 +13,6 @@ compile_commands.json
 *.obj
 *.lib
 *.user
+build-*/
+docs/**/plans/**
+docs/**/specs/**
