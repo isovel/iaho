@@ -1,3 +1,6 @@
 [submodule "deps/ue4ss"]
 	path = deps/ue4ss
 	url = https://github.com/UE4SS-RE/RE-UE4SS.git
+[submodule "deps/pal-config-lib"]
+	path = deps/pal-config-lib
+	url = git@github.com:isovel/pal-config-lib.git
