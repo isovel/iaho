@@ -7,7 +7,7 @@
 #include "Config.hpp"
 #include "Inventory.hpp"
 #include "Log.hpp"
-#include "Reflection.hpp"
+#include <PalCore/Runtime/Reflect.hpp>
 
 namespace IAHO
 {
@@ -40,20 +40,19 @@ namespace IAHO
 
     auto RecipeFilter::FindRecipeAccess(UObject* WorldContext) -> UObject*
     {
-        auto* Utility = FindClassDefaultObject(STR("/Script/Pal.PalMasterDataTablesUtility"));
+        auto* Utility = PalCore::DefaultObject(STR("/Script/Pal.PalMasterDataTablesUtility"));
         if (!Utility)
         {
             return nullptr;
         }
 
-        UObject* Access{};
-        FuncCall Call{};
-        if (!Call.Bind(Utility, STR("GetItemRecipeDataTableAccess")) || !Call.Set(STR("WorldContextObject"), WorldContext) || !Call.Call() ||
-            !Call.Get(STR("ReturnValue"), Access))
+        PalCore::Call GetAccess(Utility, STR("GetItemRecipeDataTableAccess"));
+        if (!GetAccess.Set(STR("WorldContextObject"), WorldContext) || !GetAccess.Run())
         {
             return nullptr;
         }
-        return Access;
+        UObject** Access = GetAccess.Get<UObject*>(STR("ReturnValue"));
+        return Access ? *Access : nullptr;
     }
 
     auto RecipeFilter::ResolveProductId(UObject* WorldContext, const FName& RecipeId) -> FName
@@ -70,12 +69,12 @@ namespace IAHO
 
         if (Access && Offset >= 0)
         {
-            FuncCall Call{};
-            bool Found{};
-            if (Call.Bind(Access, STR("BP_FindRow")) && Call.Set(STR("RowName"), RecipeId) && Call.Call() &&
-                Call.Get(STR("bResult"), Found) && Found)
+            PalCore::Call FindRow(Access, STR("BP_FindRow"));
+            if (FindRow.Set(STR("RowName"), RecipeId) && FindRow.Run())
             {
-                if (auto* Row = static_cast<uint8_t*>(Call.Raw(STR("ReturnValue"))))
+                const bool* Found = FindRow.Get<bool>(STR("bResult"));
+                auto* Row = Found && *Found ? static_cast<uint8_t*>(FindRow.Raw(STR("ReturnValue"))) : nullptr;
+                if (Row)
                 {
                     Product = *reinterpret_cast<FName*>(Row + Offset);
                 }

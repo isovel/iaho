@@ -9,12 +9,12 @@
 #include <Unreal/NameTypes.hpp>
 #include <Unreal/UFunctionStructs.hpp>
 #include <Unreal/UObject.hpp>
+#include <Unreal/UObjectGlobals.hpp>
 
 #include "Config.hpp"
 #include "Inventory.hpp"
 #include "Log.hpp"
 #include "RecipeFilter.hpp"
-#include "Reflection.hpp"
 
 namespace IAHO
 {
@@ -180,7 +180,7 @@ namespace IAHO
 
         for (const auto& Target : Targets)
         {
-            auto* Function = FindFunction(Target.FunctionPath);
+            auto* Function = UObjectGlobals::StaticFindObject<UFunction*>(nullptr, nullptr, Target.FunctionPath);
             if (!Function)
             {
                 Log::Warn(STR("Hook target '{}' not found in this build"), Target.FunctionPath);

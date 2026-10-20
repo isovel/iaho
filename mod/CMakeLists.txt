@@ -3,7 +3,6 @@ set(TARGET IAlreadyHaveOne)
 add_library(${TARGET} SHARED
     src/dllmain.cpp
     src/Config.cpp
-    src/Reflection.cpp
     src/Inventory.cpp
     src/RecipeFilter.cpp
     src/Hooks.cpp

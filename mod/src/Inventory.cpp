@@ -4,7 +4,7 @@
 
 #include "Config.hpp"
 #include "Log.hpp"
-#include "Reflection.hpp"
+#include <PalCore/Runtime/Reflect.hpp>
 
 namespace IAHO
 {
@@ -23,63 +23,46 @@ namespace IAHO
         // simply keeps its recipe, which is the harmless direction to be wrong in.
         constexpr uint8_t ConsumableKeyItemTypeB = 54;
         constexpr auto RefreshWindow = std::chrono::milliseconds{250};
-
-        template <typename ValueType>
-        auto ReadProperty(UObject* Object, const CharType* PropertyName, ValueType& OutValue) -> bool
-        {
-            if (!Object)
-            {
-                return false;
-            }
-            auto* Property = Object->GetPropertyByNameInChain(PropertyName);
-            if (!Property)
-            {
-                return false;
-            }
-            OutValue = *Property->ContainerPtrToValuePtr<ValueType>(Object);
-            return true;
-        }
     } // namespace
 
     auto EssentialInventory::ResolveContainer(UObject* WorldContext) -> UObject*
     {
-        auto* PalUtility = FindClassDefaultObject(STR("/Script/Pal.PalUtility"));
+        auto* PalUtility = PalCore::DefaultObject(STR("/Script/Pal.PalUtility"));
         if (!PalUtility)
         {
             Log::Error(STR("PalUtility class default object not found"));
             return nullptr;
         }
 
-        UObject* PlayerState{};
-        FuncCall GetPlayerState{};
-        if (!GetPlayerState.Bind(PalUtility, STR("GetLocalPlayerState")) || !GetPlayerState.Set(STR("WorldContextObject"), WorldContext) ||
-            !GetPlayerState.Call() || !GetPlayerState.Get(STR("ReturnValue"), PlayerState) || !PlayerState)
+        PalCore::Call GetPlayerState(PalUtility, STR("GetLocalPlayerState"));
+        UObject** PlayerState{};
+        if (!GetPlayerState.Set(STR("WorldContextObject"), WorldContext) || !GetPlayerState.Run() ||
+            !(PlayerState = GetPlayerState.Get<UObject*>(STR("ReturnValue"))) || !*PlayerState)
         {
             // Expected on a dedicated server, where there is no local player. The mod stays inert there.
             Log::Debug(STR("No local player state; skipping"));
             return nullptr;
         }
 
-        UObject* InventoryData{};
-        FuncCall GetInventoryData{};
-        if (!GetInventoryData.Bind(PlayerState, STR("GetInventoryData")) || !GetInventoryData.Call() ||
-            !GetInventoryData.Get(STR("ReturnValue"), InventoryData) || !InventoryData)
+        PalCore::Call GetInventoryData(*PlayerState, STR("GetInventoryData"));
+        UObject** InventoryData{};
+        if (!GetInventoryData.Run() || !(InventoryData = GetInventoryData.Get<UObject*>(STR("ReturnValue"))) || !*InventoryData)
         {
             Log::Debug(STR("No inventory data on local player state"));
             return nullptr;
         }
 
-        UObject* Container{};
-        bool Found{};
-        FuncCall GetContainer{};
-        if (!GetContainer.Bind(InventoryData, STR("TryGetContainerFromInventoryType")) ||
-            !GetContainer.Set(STR("inventoryType"), EssentialInventoryType) || !GetContainer.Call() ||
-            !GetContainer.Get(STR("ReturnValue"), Found) || !Found || !GetContainer.Get(STR("OutContainer"), Container))
+        PalCore::Call GetContainer(*InventoryData, STR("TryGetContainerFromInventoryType"));
+        const bool* Found{};
+        UObject** Container{};
+        if (!GetContainer.Set(STR("inventoryType"), EssentialInventoryType) || !GetContainer.Run() ||
+            !(Found = GetContainer.Get<bool>(STR("ReturnValue"))) || !*Found ||
+            !(Container = GetContainer.Get<UObject*>(STR("OutContainer"))))
         {
             Log::Debug(STR("Essential container unavailable"));
             return nullptr;
         }
-        return Container;
+        return *Container;
     }
 
     auto EssentialInventory::Refresh(UObject* WorldContext) -> bool
@@ -96,55 +79,58 @@ namespace IAHO
             return false;
         }
 
-        int32 SlotCount{};
-        FuncCall Num{};
-        if (!Num.Bind(Container, STR("Num")) || !Num.Call() || !Num.Get(STR("ReturnValue"), SlotCount))
+        PalCore::Call Num(Container, STR("Num"));
+        const int32* SlotCount{};
+        if (!Num.Run() || !(SlotCount = Num.Get<int32>(STR("ReturnValue"))))
         {
             Log::Error(STR("Essential container has no reflected Num()"));
             return false;
         }
 
-        FuncCall GetSlot{};
-        if (!GetSlot.Bind(Container, STR("Get")))
+        if (!PalCore::Call(Container, STR("Get")).Bound())
         {
             Log::Error(STR("Essential container has no reflected Get(Index)"));
             return false;
         }
 
         std::unordered_set<uint64_t> Owned{};
-        for (int32 Index = 0; Index < SlotCount; ++Index)
+        for (int32 Index = 0; Index < *SlotCount; ++Index)
         {
-            UObject* Slot{};
-            if (!GetSlot.Set(STR("Index"), Index) || !GetSlot.Call() || !GetSlot.Get(STR("ReturnValue"), Slot) || !Slot)
+            PalCore::Call GetSlot(Container, STR("Get"));
+            UObject** SlotAt{};
+            if (!GetSlot.Set(STR("Index"), Index) || !GetSlot.Run() || !(SlotAt = GetSlot.Get<UObject*>(STR("ReturnValue"))) || !*SlotAt)
             {
                 continue;
+            }
+            UObject* const Slot = *SlotAt;
+
+            PalCore::Call Empty(Slot, STR("IsEmpty"));
+            if (Empty.Run())
+            {
+                if (const bool* IsEmpty = Empty.Get<bool>(STR("ReturnValue")); IsEmpty && *IsEmpty)
+                {
+                    continue;
+                }
             }
 
-            bool IsEmpty{true};
-            FuncCall Empty{};
-            if (Empty.Bind(Slot, STR("IsEmpty")) && Empty.Call() && Empty.Get(STR("ReturnValue"), IsEmpty) && IsEmpty)
+            PalCore::Call GetStatic(Slot, STR("TryGetStaticItemData"));
+            const bool* Resolved{};
+            UObject** StaticItemDataAt{};
+            if (!GetStatic.Run() || !(Resolved = GetStatic.Get<bool>(STR("ReturnValue"))) || !*Resolved ||
+                !(StaticItemDataAt = GetStatic.Get<UObject*>(STR("OutStaticItemData"))) || !*StaticItemDataAt)
             {
                 continue;
             }
-
-            UObject* StaticItemData{};
-            bool Resolved{};
-            FuncCall GetStatic{};
-            if (!GetStatic.Bind(Slot, STR("TryGetStaticItemData")) || !GetStatic.Call() ||
-                !GetStatic.Get(STR("ReturnValue"), Resolved) || !Resolved ||
-                !GetStatic.Get(STR("OutStaticItemData"), StaticItemData) || !StaticItemData)
-            {
-                continue;
-            }
+            UObject* const StaticItemData = *StaticItemDataAt;
 
             FName ItemId{};
-            if (!ReadProperty(StaticItemData, STR("ID"), ItemId))
+            if (!PalCore::ReadProperty(StaticItemData, STR("ID"), ItemId))
             {
                 continue;
             }
 
             uint8_t TypeB{};
-            const auto HasTypeB = ReadProperty(StaticItemData, STR("TypeB"), TypeB);
+            const auto HasTypeB = PalCore::ReadProperty(StaticItemData, STR("TypeB"), TypeB);
             const auto IsConsumable = HasTypeB && TypeB == ConsumableKeyItemTypeB;
 
             if (!IsConsumable)
@@ -157,9 +143,9 @@ namespace IAHO
                 int32 MaxStackCount{};
                 uint8_t TypeA{};
                 bool NotConsumed{};
-                ReadProperty(StaticItemData, STR("MaxStackCount"), MaxStackCount);
-                ReadProperty(StaticItemData, STR("TypeA"), TypeA);
-                ReadProperty(StaticItemData, STR("bNotConsumed"), NotConsumed);
+                PalCore::ReadProperty(StaticItemData, STR("MaxStackCount"), MaxStackCount);
+                PalCore::ReadProperty(StaticItemData, STR("TypeA"), TypeA);
+                PalCore::ReadProperty(StaticItemData, STR("bNotConsumed"), NotConsumed);
                 Log::Debug(STR("Essential slot {} holds '{}' (TypeA={} TypeB={} MaxStack={} NotConsumed={}){}"),
                              Index,
                              ItemId.ToString(),
