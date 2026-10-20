@@ -88,8 +88,14 @@ namespace IAHO
             const auto* Target = static_cast<const HookTarget*>(CustomData);
             // One snapshot per call, so a reload mid-list cannot mix two configs.
             const auto Current = Config::Get();
-            if (!Target || !Current->Enabled)
+            if (!Target)
             {
+                return;
+            }
+            if (!Current->Enabled)
+            {
+                // Forget the last count, so turning the mod back on reports again.
+                LastHiddenCount().erase(Target->FunctionPath);
                 return;
             }
 
