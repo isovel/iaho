@@ -23,13 +23,13 @@ namespace IAHO
                 auto* RecipeStruct = UObjectGlobals::StaticFindObject<UScriptStruct*>(nullptr, nullptr, STR("/Script/Pal.PalItemRecipe"));
                 if (!RecipeStruct)
                 {
-                    Log<LogLevel::Error>(STR("FPalItemRecipe struct not found\n"));
+                    Log::Error(STR("FPalItemRecipe struct not found"));
                     return -1;
                 }
                 auto* Property = RecipeStruct->FindProperty(FName{STR("Product_Id"), FNAME_Add});
                 if (!Property)
                 {
-                    Log<LogLevel::Error>(STR("FPalItemRecipe has no Product_Id property\n"));
+                    Log::Error(STR("FPalItemRecipe has no Product_Id property"));
                     return -1;
                 }
                 return static_cast<int32>(Property->GetOffset_Internal());
@@ -87,7 +87,7 @@ namespace IAHO
         if (!Product.ToUnstableInt())
         {
             Product = RecipeId;
-            LogDiscovery(STR("Recipe '{}' product unresolved, assuming row name is the product id\n"), FName{RecipeId}.ToString());
+            Log::Debug(STR("Recipe '{}' product unresolved, assuming row name is the product id"), FName{RecipeId}.ToString());
         }
 
         m_ProductByRecipe.emplace(Key, Product);

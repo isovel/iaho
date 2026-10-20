@@ -46,7 +46,7 @@ namespace IAHO
         auto* PalUtility = FindClassDefaultObject(STR("/Script/Pal.PalUtility"));
         if (!PalUtility)
         {
-            Log<LogLevel::Error>(STR("PalUtility class default object not found\n"));
+            Log::Error(STR("PalUtility class default object not found"));
             return nullptr;
         }
 
@@ -56,7 +56,7 @@ namespace IAHO
             !GetPlayerState.Call() || !GetPlayerState.Get(STR("ReturnValue"), PlayerState) || !PlayerState)
         {
             // Expected on a dedicated server, where there is no local player. The mod stays inert there.
-            LogDiscovery(STR("No local player state; skipping\n"));
+            Log::Debug(STR("No local player state; skipping"));
             return nullptr;
         }
 
@@ -65,7 +65,7 @@ namespace IAHO
         if (!GetInventoryData.Bind(PlayerState, STR("GetInventoryData")) || !GetInventoryData.Call() ||
             !GetInventoryData.Get(STR("ReturnValue"), InventoryData) || !InventoryData)
         {
-            LogDiscovery(STR("No inventory data on local player state\n"));
+            Log::Debug(STR("No inventory data on local player state"));
             return nullptr;
         }
 
@@ -76,7 +76,7 @@ namespace IAHO
             !GetContainer.Set(STR("inventoryType"), EssentialInventoryType) || !GetContainer.Call() ||
             !GetContainer.Get(STR("ReturnValue"), Found) || !Found || !GetContainer.Get(STR("OutContainer"), Container))
         {
-            LogDiscovery(STR("Essential container unavailable\n"));
+            Log::Debug(STR("Essential container unavailable"));
             return nullptr;
         }
         return Container;
@@ -100,14 +100,14 @@ namespace IAHO
         FuncCall Num{};
         if (!Num.Bind(Container, STR("Num")) || !Num.Call() || !Num.Get(STR("ReturnValue"), SlotCount))
         {
-            Log<LogLevel::Error>(STR("Essential container has no reflected Num()\n"));
+            Log::Error(STR("Essential container has no reflected Num()"));
             return false;
         }
 
         FuncCall GetSlot{};
         if (!GetSlot.Bind(Container, STR("Get")))
         {
-            Log<LogLevel::Error>(STR("Essential container has no reflected Get(Index)\n"));
+            Log::Error(STR("Essential container has no reflected Get(Index)"));
             return false;
         }
 
@@ -160,7 +160,7 @@ namespace IAHO
                 ReadProperty(StaticItemData, STR("MaxStackCount"), MaxStackCount);
                 ReadProperty(StaticItemData, STR("TypeA"), TypeA);
                 ReadProperty(StaticItemData, STR("bNotConsumed"), NotConsumed);
-                LogDiscovery(STR("Essential slot {} holds '{}' (TypeA={} TypeB={} MaxStack={} NotConsumed={}){}\n"),
+                Log::Debug(STR("Essential slot {} holds '{}' (TypeA={} TypeB={} MaxStack={} NotConsumed={}){}"),
                              Index,
                              ItemId.ToString(),
                              TypeA,
@@ -177,7 +177,7 @@ namespace IAHO
 
         if (Changed)
         {
-            Log(STR("Key item inventory: {} distinct item(s)\n"), m_OwnedIds.size());
+            Log::Info(STR("Key item inventory: {} distinct item(s)"), m_OwnedIds.size());
         }
         return true;
     }

@@ -96,7 +96,7 @@ namespace IAHO
         auto* Property = m_Function->FindProperty(FName{ParameterName, FNAME_Add});
         if (!Property)
         {
-            Log<LogLevel::Error>(STR("Parameter '{}' not found on '{}'\n"), ParameterName, m_Function->GetName());
+            Log::Error(STR("Parameter '{}' not found on '{}'"), ParameterName, m_Function->GetName());
         }
         return Property;
     }
@@ -123,7 +123,7 @@ namespace IAHO
         const auto Size = static_cast<size_t>(Property->GetElementSize());
         if (Size != ExpectedSize || Offset + Size > m_Params.size())
         {
-            Log<LogLevel::Error>(STR("Parameter '{}' size mismatch on '{}': game {} bytes at {}, mod {} bytes\n"),
+            Log::Error(STR("Parameter '{}' size mismatch on '{}': game {} bytes at {}, mod {} bytes"),
                                  ParameterName,
                                  m_Function->GetName(),
                                  Size,

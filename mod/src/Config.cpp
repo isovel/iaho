@@ -67,7 +67,7 @@ namespace IAHO
         RC::File::StreamIType Stream{ConfigPath};
         if (!Stream.is_open())
         {
-            Log(STR("No config.ini at {}, using defaults\n"), ConfigPath.wstring());
+            Log::Info(STR("No config.ini at {}, using defaults"), ConfigPath.wstring());
             return;
         }
 
@@ -119,7 +119,8 @@ namespace IAHO
             }
         }
 
-        Log(STR("Config: Enabled={} LogLevel={} ExtraHidden={} NeverHide={}\n"),
+        Log::SetVerbosity(m_Verbosity);
+        Log::Info(STR("Config: Enabled={} LogLevel={} ExtraHidden={} NeverHide={}"),
             m_Enabled,
             static_cast<int32_t>(m_Verbosity),
             m_ExtraHidden.size(),

@@ -1,28 +1,68 @@
 #pragma once
 
+#include <format>
+#include <string>
 #include <utility>
 
-#include <DynamicOutput/DynamicOutput.hpp>
-#include <File/Macros.hpp>
+#include <IAHO/Settings.hpp>
+#include <PalCore/Log.hpp>
+#include <PalCore/Runtime/Log.hpp>
+#include <PalCore/Utf.hpp>
 
-#include "Config.hpp"
-
-namespace IAHO
+namespace IAHO::Log
 {
-    template <int32_t Level = RC::LogLevel::Normal, typename... Args>
-    auto Log(RC::File::StringViewType Format, Args&&... FormatArgs) -> void
+    // Constructed on first use, from on_unreal_init, never inside DllMain.
+    inline auto Get() -> PalCore::Logger&
     {
-        RC::Output::send<Level>(RC::File::StringType{STR("[IAlreadyHaveOne] ")} + RC::File::StringType{Format}, std::forward<Args>(FormatArgs)...);
+        static PalCore::Logger Instance{"IAlreadyHaveOne"};
+        static const bool bSinked = (Instance.SetSink(PalCore::OutputSink()), true);
+        (void)bSinked;
+        return Instance;
     }
 
-    // Per-call hook tracing. Silent unless config.ini raises LogLevel to Discovery.
-    template <typename... Args>
-    auto LogDiscovery(RC::File::StringViewType Format, Args&&... FormatArgs) -> void
+    // Warnings and errors always pass; discovery adds the per-call tracing.
+    inline auto SetVerbosity(LogVerbosity Verbosity) -> void
     {
-        if (GetConfig().Verbosity() < LogVerbosity::Discovery)
+        switch (Verbosity)
+        {
+        case LogVerbosity::Quiet: Get().SetLevel(PalCore::Level::Warning); break;
+        case LogVerbosity::Normal: Get().SetLevel(PalCore::Level::Info); break;
+        case LogVerbosity::Discovery: Get().SetLevel(PalCore::Level::Debug); break;
+        }
+    }
+
+    template <typename... Args>
+    auto Write(PalCore::Level At, std::wformat_string<Args...> Format, Args&&... FormatArgs) -> void
+    {
+        if (!Get().Enabled(At))
         {
             return;
         }
-        Log<RC::LogLevel::Verbose>(Format, std::forward<Args>(FormatArgs)...);
+        Get().Write(At, PalCore::Narrow(std::format(Format, std::forward<Args>(FormatArgs)...)));
     }
-} // namespace IAHO
+
+    template <typename... Args>
+    auto Error(std::wformat_string<Args...> Format, Args&&... FormatArgs) -> void
+    {
+        Write(PalCore::Level::Error, Format, std::forward<Args>(FormatArgs)...);
+    }
+
+    template <typename... Args>
+    auto Warn(std::wformat_string<Args...> Format, Args&&... FormatArgs) -> void
+    {
+        Write(PalCore::Level::Warning, Format, std::forward<Args>(FormatArgs)...);
+    }
+
+    template <typename... Args>
+    auto Info(std::wformat_string<Args...> Format, Args&&... FormatArgs) -> void
+    {
+        Write(PalCore::Level::Info, Format, std::forward<Args>(FormatArgs)...);
+    }
+
+    // Per-call hook tracing, shown only at the discovery log level.
+    template <typename... Args>
+    auto Debug(std::wformat_string<Args...> Format, Args&&... FormatArgs) -> void
+    {
+        Write(PalCore::Level::Debug, Format, std::forward<Args>(FormatArgs)...);
+    }
+}

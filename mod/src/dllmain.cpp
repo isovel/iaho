@@ -45,13 +45,13 @@ class IAlreadyHaveOne : public RC::CppUserModBase
     {
         if (!PalCore::GameThread::Start(STR("IAlreadyHaveOne")))
         {
-            IAHO::Log<RC::LogLevel::Error>(STR("Neither EngineTick nor ProcessEvent could be hooked\n"));
+            IAHO::Log::Error(STR("Neither EngineTick nor ProcessEvent could be hooked"));
             return;
         }
         IAHO::GetConfig().Load(ModDirectory());
         if (!IAHO::GetConfig().IsEnabled())
         {
-            IAHO::Log(STR("Disabled via config.ini\n"));
+            IAHO::Log::Info(STR("Disabled via config.ini"));
             return;
         }
         IAHO::InstallHooks();

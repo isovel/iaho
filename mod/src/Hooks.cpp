@@ -100,7 +100,7 @@ namespace IAHO
             auto* ListAddress = ParamAddress(Context, Function, Target->RecipeListParam);
             if (!ListAddress)
             {
-                Log<LogLevel::Error>(STR("'{}' has no parameter '{}'\n"), Target->FunctionPath, Target->RecipeListParam);
+                Log::Error(STR("'{}' has no parameter '{}'"), Target->FunctionPath, Target->RecipeListParam);
                 return;
             }
             auto& RecipeList = *static_cast<TArray<FName>*>(ListAddress);
@@ -109,7 +109,7 @@ namespace IAHO
             // walk whatever it points at.
             if (RecipeList.Num() < 0 || RecipeList.Num() > 4096)
             {
-                Log<LogLevel::Error>(STR("'{}' parameter '{}' has implausible length {}, skipping\n"),
+                Log::Error(STR("'{}' parameter '{}' has implausible length {}, skipping"),
                                      Target->FunctionPath,
                                      Target->RecipeListParam,
                                      RecipeList.Num());
@@ -132,7 +132,7 @@ namespace IAHO
                 return;
             }
 
-            LogDiscovery(STR("{} produced {} recipe(s): {}\n"), Target->FunctionPath, RecipeList.Num(), DescribeList(RecipeList));
+            Log::Debug(STR("{} produced {} recipe(s): {}"), Target->FunctionPath, RecipeList.Num(), DescribeList(RecipeList));
 
             // Fail open: without a readable key item inventory the vanilla list stands untouched.
             if (!GetEssentialInventory().Refresh(WorldContext))
@@ -148,7 +148,7 @@ namespace IAHO
                 {
                     continue;
                 }
-                LogDiscovery(STR("Hiding '{}' (already in key items)\n"), FName{RecipeId}.ToString());
+                Log::Debug(STR("Hiding '{}' (already in key items)"), FName{RecipeId}.ToString());
                 RecipeList.RemoveAt(Index);
                 ++Hidden;
             }
@@ -160,7 +160,7 @@ namespace IAHO
                 LastHidden = Hidden;
                 if (Hidden > 0)
                 {
-                    Log(STR("{}: hid {} already-owned key item recipe(s)\n"), Target->FunctionPath, Hidden);
+                    Log::Info(STR("{}: hid {} already-owned key item recipe(s)"), Target->FunctionPath, Hidden);
                 }
             }
         }
@@ -183,11 +183,11 @@ namespace IAHO
             auto* Function = FindFunction(Target.FunctionPath);
             if (!Function)
             {
-                Log<LogLevel::Warning>(STR("Hook target '{}' not found in this build\n"), Target.FunctionPath);
+                Log::Warn(STR("Hook target '{}' not found in this build"), Target.FunctionPath);
                 continue;
             }
             Function->RegisterPostHook(&OnRecipeList, const_cast<HookTarget*>(&Target));
-            Log(STR("Hooked '{}'\n"), Target.FunctionPath);
+            Log::Info(STR("Hooked '{}'"), Target.FunctionPath);
         }
     }
 } // namespace IAHO

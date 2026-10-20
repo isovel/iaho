@@ -3,18 +3,13 @@
 #include <filesystem>
 #include <unordered_set>
 
+#include <IAHO/Settings.hpp>
+
 #include <File/Macros.hpp>
 #include <Unreal/NameTypes.hpp>
 
 namespace IAHO
 {
-    enum class LogVerbosity
-    {
-        Quiet = 0,   // errors only
-        Normal = 1,  // lifecycle plus each recipe actually hidden
-        Discovery = 2, // full per-call hook tracing, used to resolve which hook feeds each menu
-    };
-
     class Config
     {
       public:

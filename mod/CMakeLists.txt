@@ -17,7 +17,10 @@ target_include_directories(${TARGET} PRIVATE
     "${CMAKE_SOURCE_DIR}/deps/ue4ss/deps/first/Function-Pointer-Wrapper/include"
 )
 
-target_link_libraries(${TARGET} PUBLIC UE4SS PRIVATE PalCore::Runtime)
+target_link_libraries(${TARGET} PUBLIC UE4SS PRIVATE PalCore::Runtime iaho_core)
+
+# Windows.h would otherwise define min and max as macros over pal-config-lib.
+target_compile_definitions(${TARGET} PRIVATE NOMINMAX)
 
 if(MSVC)
     target_compile_options(${TARGET} PRIVATE /FS /Zi)
