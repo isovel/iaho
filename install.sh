@@ -2,7 +2,6 @@
 # Deploy the built mod into Palworld's UE4SS Mods folder.
 #   ue4ss/Mods/IAlreadyHaveOne/enabled.txt
 #   ue4ss/Mods/IAlreadyHaveOne/dlls/main.dll
-#   ue4ss/Mods/IAlreadyHaveOne/config.ini   (seeded on first install only)
 # Override the destination with UE4SS_MODS_DIR.
 set -euo pipefail
 
@@ -26,11 +25,5 @@ fi
 
 rm -f "$DEST/dlls/main.pdb"
 touch "$DEST/enabled.txt"
-
-# Seed the config on first install only; never clobber edits made in the game folder
-if [[ ! -f "$DEST/config.ini" ]]; then
-    cp "$SRC_DIR/mod/payload/config.ini" "$DEST/config.ini"
-    echo "install: seeded config.ini"
-fi
 
 echo "install: deployed $MOD_NAME -> $DEST"

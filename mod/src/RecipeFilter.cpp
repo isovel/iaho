@@ -93,15 +93,15 @@ namespace IAHO
         return Product;
     }
 
-    auto RecipeFilter::ShouldHide(UObject* WorldContext, const FName& RecipeId) -> bool
+    auto RecipeFilter::ShouldHide(const Settings& Current, UObject* WorldContext, const FName& RecipeId) -> bool
     {
         const auto Product = ResolveProductId(WorldContext, RecipeId);
 
-        if (GetConfig().IsNeverHidden(Product) || GetConfig().IsNeverHidden(RecipeId))
+        if (Config::IsNeverHidden(Current, Product) || Config::IsNeverHidden(Current, RecipeId))
         {
             return false;
         }
-        if (GetConfig().IsForceHidden(Product) || GetConfig().IsForceHidden(RecipeId))
+        if (Config::IsForceHidden(Current, Product) || Config::IsForceHidden(Current, RecipeId))
         {
             return true;
         }

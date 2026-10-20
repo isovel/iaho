@@ -1,153 +1,147 @@
 #include "Config.hpp"
 
-#include <algorithm>
-#include <cwctype>
-#include <fstream>
+#include <chrono>
+#include <optional>
+#include <string>
+
+#include <IAHO/LegacyIni.hpp>
+#include <PalCfg/ConfigFile.hpp>
+#include <PalCfg/File.hpp>
+#include <PalCfg/LogSink.hpp>
+#include <PalCfg/Utf.hpp>
+#include <PalCore/Runtime/Module.hpp>
 
 #include "Log.hpp"
 
-namespace IAHO
+namespace IAHO::Config
 {
-    using RC::File::StringType;
-
     namespace
     {
-        auto Trim(StringType Value) -> StringType
+        using File = PalCfg::ConfigFile<Settings, kFields.size()>;
+
+        // Function-local, so none of it is constructed inside DllMain.
+        struct State
         {
-            const auto NotSpace = [](RC::CharType C) {
-                return C != STR(' ') && C != STR('\t') && C != STR('\r') && C != STR('\n');
-            };
-            Value.erase(Value.begin(), std::find_if(Value.begin(), Value.end(), NotSpace));
-            Value.erase(std::find_if(Value.rbegin(), Value.rend(), NotSpace).base(), Value.end());
-            return Value;
+            std::optional<File> ConfigFile;
+            PalCfg::CallbackSink Sink{[](PalCfg::Severity Severity, const std::string& Line) {
+                const std::wstring Text = PalCfg::Utf8ToWide(Line);
+                switch (Severity)
+                {
+                case PalCfg::Severity::Error: Log::Error(STR("config: {}"), Text); break;
+                case PalCfg::Severity::Warning: Log::Warn(STR("config: {}"), Text); break;
+                default: Log::Info(STR("config: {}"), Text); break;
+                }
+            }};
+            // Holds an import whose config.json could not be written, so it
+            // still runs this session.
+            std::shared_ptr<const Settings> Override;
+        };
+
+        auto GetState() -> State&
+        {
+            static State Instance;
+            return Instance;
         }
 
-        auto ToLower(StringType Value) -> StringType
+        auto Publish(const Settings& Current) -> void
         {
-            std::transform(Value.begin(), Value.end(), Value.begin(), [](RC::CharType C) {
-                return static_cast<RC::CharType>(std::towlower(static_cast<std::wint_t>(C)));
-            });
-            return Value;
+            Log::SetVerbosity(Current.Verbosity);
+            Log::Info(STR("Config: Enabled={} LogLevel={} ExtraHidden={} NeverHide={}"),
+                      Current.Enabled,
+                      static_cast<int>(Current.Verbosity),
+                      Current.ExtraHiddenRecipes.size(),
+                      Current.NeverHideRecipes.size());
         }
 
-        auto IsTruthy(const StringType& Value) -> bool
+        // config.ini is read here and nowhere else, and only while config.json
+        // does not exist yet.
+        auto ImportLegacy(File& ConfigFile) -> bool
         {
-            const auto Lowered = ToLower(Value);
-            return Lowered == STR("1") || Lowered == STR("true") || Lowered == STR("yes") || Lowered == STR("on");
+            if (PalCfg::StatFile(ConfigFile.Path()).exists)
+            {
+                return false;
+            }
+            const std::optional<std::string> IniPath = PalCore::ModuleRelative(reinterpret_cast<const void*>(&Initialize), "../config.ini");
+            std::string Text;
+            if (!IniPath || !PalCfg::ReadFileText(*IniPath, Text))
+            {
+                return false;
+            }
+
+            const Settings Imported = ImportIni(Text);
+            if (ConfigFile.Save(Imported))
+            {
+                Log::Info(STR("imported config.ini into config.json"));
+            }
+            else
+            {
+                Log::Warn(STR("could not write config.json; running on config.ini's settings this session"));
+                GetState().Override = std::make_shared<const Settings>(Imported);
+            }
+            return true;
         }
     } // namespace
 
-    auto Config::ParseIdList(const StringType& Value, std::unordered_set<StringType>& Out) -> void
+    auto Initialize() -> void
     {
-        StringType Current{};
-        for (const auto Char : Value)
+        auto& S = GetState();
+        const std::optional<std::string> Path = PalCore::ModuleRelative(reinterpret_cast<const void*>(&Initialize), "../config.json");
+        if (!Path)
         {
-            if (Char == STR(',') || Char == STR(';'))
-            {
-                auto Id = Trim(Current);
-                if (!Id.empty())
-                {
-                    Out.insert(std::move(Id));
-                }
-                Current.clear();
-                continue;
-            }
-            Current.push_back(Char);
-        }
-        auto Id = Trim(Current);
-        if (!Id.empty())
-        {
-            Out.insert(std::move(Id));
-        }
-    }
-
-    auto Config::Load(const std::filesystem::path& ModDirectory) -> void
-    {
-        const auto ConfigPath = ModDirectory / "config.ini";
-        RC::File::StreamIType Stream{ConfigPath};
-        if (!Stream.is_open())
-        {
-            Log::Info(STR("No config.ini at {}, using defaults"), ConfigPath.wstring());
+            Log::Error(STR("could not resolve the mod folder, using the default config"));
             return;
         }
 
-        StringType Line{};
-        while (std::getline(Stream, Line))
+        S.ConfigFile.emplace(kFields, *Path, kSchema.ModId());
+        S.ConfigFile->SetSink(S.Sink);
+        S.ConfigFile->SetOnReload([](const Settings& Current) {
+            GetState().Override.reset();
+            Publish(Current);
+        });
+
+        if (!ImportLegacy(*S.ConfigFile))
         {
-            Line = Trim(Line);
-            if (Line.empty() || Line.front() == STR(';') || Line.front() == STR('#') || Line.front() == STR('['))
-            {
-                continue;
-            }
-
-            const auto Separator = Line.find(STR('='));
-            if (Separator == StringType::npos)
-            {
-                continue;
-            }
-
-            const auto Key = ToLower(Trim(Line.substr(0, Separator)));
-            const auto Value = Trim(Line.substr(Separator + 1));
-
-            if (Key == STR("enabled"))
-            {
-                m_Enabled = IsTruthy(Value);
-            }
-            else if (Key == STR("loglevel"))
-            {
-                const auto Lowered = ToLower(Value);
-                if (Lowered == STR("quiet"))
-                {
-                    m_Verbosity = LogVerbosity::Quiet;
-                }
-                else if (Lowered == STR("discovery"))
-                {
-                    m_Verbosity = LogVerbosity::Discovery;
-                }
-                else
-                {
-                    m_Verbosity = LogVerbosity::Normal;
-                }
-            }
-            else if (Key == STR("extrahiddenrecipes"))
-            {
-                ParseIdList(Value, m_ExtraHidden);
-            }
-            else if (Key == STR("neverhiderecipes"))
-            {
-                ParseIdList(Value, m_NeverHidden);
-            }
+            S.ConfigFile->LoadOrCreate();
         }
-
-        Log::SetVerbosity(m_Verbosity);
-        Log::Info(STR("Config: Enabled={} LogLevel={} ExtraHidden={} NeverHide={}"),
-            m_Enabled,
-            static_cast<int32_t>(m_Verbosity),
-            m_ExtraHidden.size(),
-            m_NeverHidden.size());
+        Publish(*Get());
     }
 
-    auto Config::IsForceHidden(const RC::Unreal::FName& ProductId) const -> bool
+    auto Tick() -> void
     {
-        if (m_ExtraHidden.empty())
+        if (auto& S = GetState(); S.ConfigFile)
         {
-            return false;
+            S.ConfigFile->Tick(std::chrono::steady_clock::now());
         }
-        return m_ExtraHidden.contains(RC::Unreal::FName{ProductId}.ToString());
     }
 
-    auto Config::IsNeverHidden(const RC::Unreal::FName& ProductId) const -> bool
+    auto Shutdown() -> void
     {
-        if (m_NeverHidden.empty())
+        GetState().ConfigFile.reset();
+        GetState().Override.reset();
+    }
+
+    auto Get() -> std::shared_ptr<const Settings>
+    {
+        auto& S = GetState();
+        if (S.Override)
         {
-            return false;
+            return S.Override;
         }
-        return m_NeverHidden.contains(RC::Unreal::FName{ProductId}.ToString());
+        if (S.ConfigFile)
+        {
+            return S.ConfigFile->Get();
+        }
+        static const auto Defaults = std::make_shared<const Settings>();
+        return Defaults;
     }
 
-    auto GetConfig() -> Config&
+    auto IsForceHidden(const Settings& Current, const RC::Unreal::FName& ProductId) -> bool
     {
-        static Config Instance{};
-        return Instance;
+        return !Current.ExtraHiddenRecipes.empty() && Current.ExtraHiddenRecipes.contains(RC::Unreal::FName{ProductId}.ToString());
     }
-} // namespace IAHO
+
+    auto IsNeverHidden(const Settings& Current, const RC::Unreal::FName& ProductId) -> bool
+    {
+        return !Current.NeverHideRecipes.empty() && Current.NeverHideRecipes.contains(RC::Unreal::FName{ProductId}.ToString());
+    }
+} // namespace IAHO::Config

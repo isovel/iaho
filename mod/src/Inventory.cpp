@@ -138,7 +138,7 @@ namespace IAHO
                 Owned.insert(ItemId.ToUnstableInt());
             }
 
-            if (GetConfig().Verbosity() >= LogVerbosity::Discovery)
+            if (Log::Get().Enabled(PalCore::Level::Debug))
             {
                 int32 MaxStackCount{};
                 uint8_t TypeA{};

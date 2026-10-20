@@ -86,7 +86,9 @@ namespace IAHO
         auto OnRecipeList(UnrealScriptFunctionCallableContext& Context, void* CustomData) -> void
         {
             const auto* Target = static_cast<const HookTarget*>(CustomData);
-            if (!Target || !GetConfig().IsEnabled())
+            // One snapshot per call, so a reload mid-list cannot mix two configs.
+            const auto Current = Config::Get();
+            if (!Target || !Current->Enabled)
             {
                 return;
             }
@@ -144,7 +146,7 @@ namespace IAHO
             for (int32 Index = RecipeList.Num() - 1; Index >= 0; --Index)
             {
                 const auto RecipeId = RecipeList[Index];
-                if (!GetRecipeFilter().ShouldHide(WorldContext, RecipeId))
+                if (!GetRecipeFilter().ShouldHide(*Current, WorldContext, RecipeId))
                 {
                     continue;
                 }

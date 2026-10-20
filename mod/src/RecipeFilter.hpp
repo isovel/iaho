@@ -1,5 +1,7 @@
 #pragma once
 
+#include <IAHO/Settings.hpp>
+
 #include <unordered_map>
 
 #include <Unreal/NameTypes.hpp>
@@ -17,7 +19,7 @@ namespace IAHO
         // Product item id a recipe row yields. NAME_None when the row cannot be resolved.
         auto ResolveProductId(RC::Unreal::UObject* WorldContext, const RC::Unreal::FName& RecipeId) -> RC::Unreal::FName;
 
-        auto ShouldHide(RC::Unreal::UObject* WorldContext, const RC::Unreal::FName& RecipeId) -> bool;
+        auto ShouldHide(const Settings& Current, RC::Unreal::UObject* WorldContext, const RC::Unreal::FName& RecipeId) -> bool;
 
         auto ClearCache() -> void
         {

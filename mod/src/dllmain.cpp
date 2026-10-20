@@ -1,29 +1,9 @@
-#include <filesystem>
-
-#include <Windows.h>
-
 #include <Mod/CppUserModBase.hpp>
 #include <PalCore/Runtime/GameThread.hpp>
 
 #include "Config.hpp"
 #include "Hooks.hpp"
 #include "Log.hpp"
-
-namespace
-{
-    HMODULE GSelfModule{};
-
-    // The dll lives in <ModDirectory>/dlls/main.dll, so config.ini sits two levels up.
-    auto ModDirectory() -> std::filesystem::path
-    {
-        wchar_t Path[MAX_PATH]{};
-        if (GSelfModule && GetModuleFileNameW(GSelfModule, Path, MAX_PATH) > 0)
-        {
-            return std::filesystem::path{Path}.parent_path().parent_path();
-        }
-        return std::filesystem::current_path();
-    }
-} // namespace
 
 class IAlreadyHaveOne : public RC::CppUserModBase
 {
@@ -38,7 +18,9 @@ class IAlreadyHaveOne : public RC::CppUserModBase
 
     ~IAlreadyHaveOne() override
     {
+        // First, so no frame polls the config while it shuts down.
         PalCore::GameThread::Stop();
+        IAHO::Config::Shutdown();
     }
 
     auto on_unreal_init() -> void override
@@ -48,12 +30,12 @@ class IAlreadyHaveOne : public RC::CppUserModBase
             IAHO::Log::Error(STR("Neither EngineTick nor ProcessEvent could be hooked"));
             return;
         }
-        IAHO::GetConfig().Load(ModDirectory());
-        if (!IAHO::GetConfig().IsEnabled())
-        {
-            IAHO::Log::Info(STR("Disabled via config.ini"));
-            return;
-        }
+        IAHO::Config::Initialize();
+        // Registered after Initialize, so the poll never overlaps the first load.
+        PalCore::GameThread::Tasks().AddFrameCallback([](float) { IAHO::Config::Tick(); });
+
+        // Installed whatever "enabled" says: the hook checks it on every call,
+        // so an edit to config.json takes effect without a restart.
         IAHO::InstallHooks();
     }
 };
@@ -69,14 +51,4 @@ extern "C"
     {
         delete Mod;
     }
-}
-
-BOOL APIENTRY DllMain(HMODULE Module, DWORD Reason, LPVOID)
-{
-    if (Reason == DLL_PROCESS_ATTACH)
-    {
-        GSelfModule = Module;
-        DisableThreadLibraryCalls(Module);
-    }
-    return TRUE;
 }

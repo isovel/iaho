@@ -1,43 +1,28 @@
 #pragma once
 
-#include <filesystem>
-#include <unordered_set>
+#include <memory>
 
 #include <IAHO/Settings.hpp>
 
-#include <File/Macros.hpp>
 #include <Unreal/NameTypes.hpp>
 
-namespace IAHO
+namespace IAHO::Config
 {
-    class Config
-    {
-      public:
-        // Reads config.ini next to the mod dll. Every field keeps its default when absent or unparsable.
-        auto Load(const std::filesystem::path& ModDirectory) -> void;
+    // Game thread. Reads config.json beside the mod, importing config.ini once
+    // when config.json is absent. Every field keeps its default when absent or
+    // unreadable.
+    auto Initialize() -> void;
 
-        auto IsEnabled() const -> bool
-        {
-            return m_Enabled;
-        }
-        auto Verbosity() const -> LogVerbosity
-        {
-            return m_Verbosity;
-        }
+    // Game thread, every frame. Polls the file and puts an edit live.
+    auto Tick() -> void;
 
-        // Item ids the player is never allowed to see re-offered, even if the Essential container says otherwise.
-        auto IsForceHidden(const RC::Unreal::FName& ProductId) const -> bool;
-        // Item ids that must always stay craftable regardless of ownership.
-        auto IsNeverHidden(const RC::Unreal::FName& ProductId) const -> bool;
+    auto Shutdown() -> void;
 
-      private:
-        auto ParseIdList(const RC::File::StringType& Value, std::unordered_set<RC::File::StringType>& Out) -> void;
+    // Any thread. Defaults until Initialize has run.
+    auto Get() -> std::shared_ptr<const Settings>;
 
-        bool m_Enabled{true};
-        LogVerbosity m_Verbosity{LogVerbosity::Normal};
-        std::unordered_set<RC::File::StringType> m_ExtraHidden{};
-        std::unordered_set<RC::File::StringType> m_NeverHidden{};
-    };
-
-    auto GetConfig() -> Config&;
-} // namespace IAHO
+    // Item ids the player is never allowed to see re-offered, even if the Essential container says otherwise.
+    auto IsForceHidden(const Settings& Current, const RC::Unreal::FName& ProductId) -> bool;
+    // Item ids that must always stay craftable regardless of ownership.
+    auto IsNeverHidden(const Settings& Current, const RC::Unreal::FName& ProductId) -> bool;
+} // namespace IAHO::Config
