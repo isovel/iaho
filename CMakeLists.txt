@@ -23,6 +23,7 @@ add_subdirectory(deps/pal-config-lib)
 # The logic that needs no game: built for the host too, and covered by tests.
 add_library(iaho_core STATIC
     core/src/LegacyIni.cpp
+    core/src/ImportOnce.cpp
 )
 target_include_directories(iaho_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/core/include")
 target_link_libraries(iaho_core PUBLIC PalCfg::Core)

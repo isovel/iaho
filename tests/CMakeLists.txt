@@ -9,6 +9,7 @@ FetchContent_MakeAvailable(Catch2)
 add_executable(iaho_tests
     LegacyIniTest.cpp
     SettingsTest.cpp
+    ImportOnceTest.cpp
 )
 target_link_libraries(iaho_tests PRIVATE iaho_core Catch2::Catch2WithMain)
 

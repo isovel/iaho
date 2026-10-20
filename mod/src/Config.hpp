@@ -8,15 +8,14 @@
 
 namespace IAHO::Config
 {
-    // Game thread. Reads config.json beside the mod, importing config.ini once
-    // when config.json is absent. Every field keeps its default when absent or
-    // unreadable.
+    // From on_unreal_init. Reads config.json beside the mod, importing
+    // config.ini once when config.json is absent. Every field keeps its default
+    // when absent or unreadable. A second call, after a Ctrl+R reload, only
+    // reports the settings already live.
     auto Initialize() -> void;
 
     // Game thread, every frame. Polls the file and puts an edit live.
     auto Tick() -> void;
-
-    auto Shutdown() -> void;
 
     // Any thread. Defaults until Initialize has run.
     auto Get() -> std::shared_ptr<const Settings>;

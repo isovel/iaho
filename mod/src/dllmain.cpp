@@ -18,9 +18,8 @@ class IAlreadyHaveOne : public RC::CppUserModBase
 
     ~IAlreadyHaveOne() override
     {
-        // First, so no frame polls the config while it shuts down.
+        // The config stays: the recipe hook outlives this object and reads it.
         PalCore::GameThread::Stop();
-        IAHO::Config::Shutdown();
     }
 
     auto on_unreal_init() -> void override
