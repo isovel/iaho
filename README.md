@@ -28,7 +28,7 @@ generic `Essential` bucket (54) while every craft-once item has a dedicated one 
 `Essential_AdditionalInventory`, `Essential_Lamp`, `Blueprint`. See
 [`docs/game-api.md`](docs/game-api.md) for the measured values.
 
-Set `LogLevel = discovery` in `config.ini` to trace every call and decision.
+Set `"logLevel": "discovery"` in `config.json` to trace every call and decision.
 
 The mod is client-side. On a dedicated server there is no local player state, so
 it does nothing. Every failure path leaves the vanilla list untouched.
@@ -51,7 +51,9 @@ xwin --accept-license --arch x86_64 --variant desktop splat --output ~/.xwin
 Then:
 
 ```
-git clone --recursive <this repo> && cd iaho
+git clone <this repo> && cd iaho
+git submodule update --init deps/pal-core deps/pal-config-lib
+git submodule update --init --recursive deps/ue4ss
 ./build-linux.sh                        # Game__Shipping__Win64
 NO_INSTALL=1 ./build-linux.sh           # skip the deploy step
 ```
@@ -76,7 +78,8 @@ Requires MSVC toolset >= 14.43 (Visual Studio >= 17.13, "Desktop development
 with C++"), Rust >= 1.73, CMake >= 3.22.
 
 ```
-git submodule update --init --recursive
+git submodule update --init deps/pal-core deps/pal-config-lib
+git submodule update --init --recursive deps/ue4ss
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64
 cmake --build build --config Game__Shipping__Win64 --target IAlreadyHaveOne
 ```
@@ -95,15 +98,39 @@ the C runtime or the UE4SS ABI, so re-pin it whenever you update UE4SS.
 ```
 <Game>/Pal/Binaries/Win64/ue4ss/Mods/IAlreadyHaveOne/dlls/main.dll
 <Game>/Pal/Binaries/Win64/ue4ss/Mods/IAlreadyHaveOne/enabled.txt
-<Game>/Pal/Binaries/Win64/ue4ss/Mods/IAlreadyHaveOne/config.ini
 ```
 
 `enabled.txt` alone is enough for UE4SS to start the mod, leaving `mods.json`
 and `mods.txt` untouched. Close the game first; Windows locks `main.dll` while
-it runs. `config.ini` is seeded on first install only, so edits in the game
-folder survive a rebuild.
+it runs. The mod writes `config.json` beside them on its first run, so edits in
+the game folder survive a rebuild.
 
 ## Configuration
 
-Every setting is documented in [`mod/payload/config.ini`](mod/payload/config.ini),
-which is what gets seeded into the game folder.
+`config.json` sits beside `enabled.txt`. The mod writes it with every setting
+documented on its first run, and puts an edit live within a second, without a
+restart. Keys match in any case.
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `enabled` | `true` | Master switch. `false` restores the vanilla crafting menus |
+| `logLevel` | `"normal"` | `"quiet"` logs errors and warnings, `"normal"` adds lifecycle and one line per recipe hidden, `"discovery"` traces every call and decision |
+| `extraHiddenRecipes` | `[]` | Item ids to hide once owned even if the key item rule would not catch them |
+| `neverHideRecipes` | `[]` | Item ids that must always stay craftable |
+
+An id list may also be one comma- or semicolon-separated string.
+
+Earlier versions read `config.ini`. When `config.json` does not exist yet, the
+mod carries `config.ini`'s settings into it once and then leaves `config.ini`
+alone; delete it whenever you like.
+
+## Tests
+
+The settings and the `config.ini` import have a host suite, no UE4SS needed:
+
+```
+cmake -B build-host -G Ninja
+cmake --build build-host
+ctest --test-dir build-host --no-tests=error --output-on-failure
+```
+
