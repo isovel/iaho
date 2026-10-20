@@ -3,6 +3,7 @@
 #include <Windows.h>
 
 #include <Mod/CppUserModBase.hpp>
+#include <PalCore/Runtime/GameThread.hpp>
 
 #include "Config.hpp"
 #include "Hooks.hpp"
@@ -35,10 +36,18 @@ class IAlreadyHaveOne : public RC::CppUserModBase
         ModAuthors = STR("isovel");
     }
 
-    ~IAlreadyHaveOne() override = default;
+    ~IAlreadyHaveOne() override
+    {
+        PalCore::GameThread::Stop();
+    }
 
     auto on_unreal_init() -> void override
     {
+        if (!PalCore::GameThread::Start(STR("IAlreadyHaveOne")))
+        {
+            IAHO::Log<RC::LogLevel::Error>(STR("Neither EngineTick nor ProcessEvent could be hooked\n"));
+            return;
+        }
         IAHO::GetConfig().Load(ModDirectory());
         if (!IAHO::GetConfig().IsEnabled())
         {

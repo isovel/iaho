@@ -168,6 +168,16 @@ namespace IAHO
 
     auto InstallHooks() -> void
     {
+        // pal-core pins the module, so a Ctrl+R reload runs this same copy with
+        // the hook still registered. Unregistering it from the destructor would
+        // race the game thread walking the callback list.
+        static bool bInstalled = false;
+        if (bInstalled)
+        {
+            return;
+        }
+        bInstalled = true;
+
         for (const auto& Target : Targets)
         {
             auto* Function = FindFunction(Target.FunctionPath);
